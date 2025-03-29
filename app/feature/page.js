@@ -5,8 +5,8 @@ import MapComponent from "../components/mapComponent";
 import { useState } from "react";
 export default function feature() {
   const [mapFunctions, setMapFunctions] = useState(null);
-  const handleMapReady = ({ createMarker1, createMarker2, stopListening,getCity }) => {
-    setMapFunctions({ createMarker1, createMarker2, stopListening,getCity});
+  const handleMapReady = ({ createMarker1, createMarker2,createMarker3,deleteMarker, stopListening,queryCity }) => {
+    setMapFunctions({ createMarker1, createMarker2,createMarker3,deleteMarker, stopListening,queryCity});
   };
   return (
     <div className="h-screen">
@@ -20,8 +20,11 @@ export default function feature() {
             <MapComponent onMapReady={handleMapReady} />
             <Button onClick={()=>{mapFunctions.createMarker1()}}>创建标记1</Button>
             <Button onClick={()=>{mapFunctions.createMarker2()}}>创建标记2</Button>
-            <Button onClick={()=>{mapFunctions.stopListening()}}>取消创建</Button>
-            <Button onClick={()=>{mapFunctions.getCity()}}>查询</Button>
+            <Button onClick={()=>{mapFunctions.createMarker3()}}>创建标记3</Button>
+            <Button onClick={()=>{mapFunctions.stopListening()}}>停止创建</Button>
+            <Button onClick={()=>{mapFunctions.deleteMarker()}}>清除标记</Button>
+            <Button onClick={()=>{mapFunctions.queryCity()}}>查询</Button>
+
           </div>
         </div>
         <div className="h-1/6 w-screen items-center justify-center flex">

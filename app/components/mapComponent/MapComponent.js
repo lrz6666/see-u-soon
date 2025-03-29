@@ -2,12 +2,171 @@
 import { useEffect, useRef, useState } from "react";
 import AMapLoader from "@amap/amap-jsapi-loader";
 import dynamic from "next/dynamic";
+
 const MapComponent = ({ onMapReady }) => {
   const mapRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
+  const [marker1, setMarker1] = useState(null);
+  const [marker2, setMarker2] = useState(null);
+  const [marker3, setMarker3] = useState(null);
+  const marker1Ref = useRef(null);
+  const marker2Ref = useRef(null);
+  const marker3Ref = useRef(null);
+  const polylineRef = useRef(null);
+
+  const updatePolyline = () => {
+    if (!mapInstance) return;
+
+    const positions = [];
+    if (marker1Ref.current) positions.push(marker1Ref.current.getPosition());
+    if (marker2Ref.current) positions.push(marker2Ref.current.getPosition());
+    if (marker3Ref.current) positions.push(marker3Ref.current.getPosition());
+
+    if (polylineRef.current) {
+      console.log(2);
+      polylineRef.current.setPath(positions);
+    } else {
+      console.log(3);
+      polylineRef.current = new AMap.Polyline({
+        path: positions,
+        strokeColor: "#3366FF",
+        strokeWeight: 5,
+        map: mapInstance,
+      });
+    }
+  };
+  useEffect(() => {
+    updatePolyline();
+    console.log(1);
+  }, [marker1, marker2, marker3]);
+  useEffect(() => {
+    if (!mapInstance || !AMap || !AMapUI) return;
+
+    AMapUI.loadUI(["misc/PoiPicker"], (PoiPicker) => {
+      const picker1 = new PoiPicker({ input: "pickerInput1" });
+      const picker2 = new PoiPicker({ input: "pickerInput2" });
+      const picker3 = new PoiPicker({ input: "pickerInput3" });
+
+      picker1.on("poiPicked", (poiResult) => {
+        if (marker1Ref.current) marker1Ref.current.setMap(null);
+        const poi = poiResult.item;
+        marker1Ref.current = new AMap.Marker({
+          position: poi.location,
+          icon: "/poi-marker-1.png",
+          map: mapInstance,
+          offset: new AMap.Pixel(-25, -60),
+        });
+        mapInstance.setCenter(poi.location);
+        setMarker1(marker1Ref.current)
+      });
+
+      picker2.on("poiPicked", (poiResult) => {
+        if (marker2Ref.current) marker2Ref.current.setMap(null);
+        const poi = poiResult.item;
+        marker2Ref.current = new AMap.Marker({
+          position: poi.location,
+          icon: "/poi-marker-2.png",
+          map: mapInstance,
+          offset: new AMap.Pixel(-25, -60),
+        });
+        mapInstance.setCenter(poi.location);
+        setMarker2(marker2Ref.current)
+      });
+
+      picker3.on("poiPicked", (poiResult) => {
+        if (marker3Ref.current) marker3Ref.current.setMap(null);
+        const poi = poiResult.item;
+        marker3Ref.current = new AMap.Marker({
+          position: poi.location,
+          icon: "/poi-marker-3.png",
+          map: mapInstance,
+          offset: new AMap.Pixel(-25, -60),
+        });
+        mapInstance.setCenter(poi.location);
+        setMarker3(marker3Ref.current)
+      });
+    });
+
+    const handleMarker1Click = (ev) => {
+      const lnglat = ev.lnglat;
+      if (marker1Ref.current) marker1Ref.current.setMap(null);
+      marker1Ref.current = new AMap.Marker({
+        position: [lnglat.getLng(), lnglat.getLat()],
+        icon: "/poi-marker-1.png",
+        offset: new AMap.Pixel(-25, -60),
+        map: mapInstance,
+      });
+      setMarker1(marker1Ref.current);
+    };
+
+    const handleMarker2Click = (ev) => {
+      const lnglat = ev.lnglat;
+      if (marker2Ref.current) marker2Ref.current.setMap(null);
+      marker2Ref.current = new AMap.Marker({
+        position: [lnglat.getLng(), lnglat.getLat()],
+        icon: "/poi-marker-2.png",
+        offset: new AMap.Pixel(-25, -60),
+        map: mapInstance,
+      });
+      setMarker2(marker2Ref.current);
+    };
+
+    const handleMarker3Click = (ev) => {
+      const lnglat = ev.lnglat;
+      if (marker3Ref.current) marker3Ref.current.setMap(null);
+      marker3Ref.current = new AMap.Marker({
+        position: [lnglat.getLng(), lnglat.getLat()],
+        icon: "/poi-marker-3.png",
+        offset: new AMap.Pixel(-25, -60),
+        map: mapInstance,
+      });
+      setMarker3(marker3Ref.current);
+    };
+
+    onMapReady({
+      createMarker1: () => {
+        mapInstance.off("click", handleMarker2Click);
+        mapInstance.off("click", handleMarker3Click);
+        mapInstance.on("click", handleMarker1Click);
+      },
+      createMarker2: () => {
+        mapInstance.off("click", handleMarker1Click);
+        mapInstance.off("click", handleMarker3Click);
+        mapInstance.on("click", handleMarker2Click);
+      },
+      createMarker3: () => {
+        mapInstance.off("click", handleMarker1Click);
+        mapInstance.off("click", handleMarker2Click);
+        mapInstance.on("click", handleMarker3Click);
+      },
+      stopListening: () => {
+        mapInstance.off("click", handleMarker1Click);
+        mapInstance.off("click", handleMarker2Click);
+        mapInstance.off("click", handleMarker3Click);
+      },
+      deleteMarker: () => {
+        const refsToClear = [marker1Ref, marker2Ref, marker3Ref, polylineRef];
+        refsToClear.forEach((ref) => {
+          if (ref.current) {
+            ref.current.setMap(null);
+            ref.current = null;
+          }
+        });
+      },
+      queryCity:()=>{}
+    });
+  }, [mapInstance]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const AMapScript = document.createElement("script");
+    AMapScript.src = "https://webapi.amap.com/loader.js";
+    AMapScript.async = true;
+    document.head.appendChild(AMapScript);
+
+    window._AMapSecurityConfig = {
+      securityJsCode: "2dda444782a3ca0e77af8378406439e8",
+    };
 
     AMapLoader.load({
       key: "f2c2bfef42f38f023e17cea4b858ed98",
@@ -23,100 +182,12 @@ const MapComponent = ({ onMapReady }) => {
           zoom: 13,
           center: [116.397428, 39.90923],
         });
-        //引入驾车路线，以及周边城市提示
-        const driving = new AMap.Driving();
-        // 初始化标记和事件
-        let newMarker1 = null;
-        let newMarker2 = null;
-
-        const handleMarker1Click = (ev) => {
-          const lnglat = ev.lnglat;
-          if (newMarker1) newMarker1.setMap(null);
-          newMarker1 = new AMap.Marker({
-            position: [lnglat.getLng(), lnglat.getLat()],
-            icon: "/poi-marker-1.png",
-            offset: new AMap.Pixel(-25, -60),
-            map: newMap,
-          });
-        };
-
-        const handleMarker2Click = (ev) => {
-          const lnglat = ev.lnglat;
-          if (newMarker2) newMarker2.setMap(null);
-          newMarker2 = new AMap.Marker({
-            position: [lnglat.getLng(), lnglat.getLat()],
-            icon: "/poi-marker-2.png",
-            offset: new AMap.Pixel(-25, -60),
-            map: newMap,
-          });
-        };
-
-        // 初始化POI选择器
-        AMapUI.loadUI(["misc/PoiPicker"], (PoiPicker) => {
-          const picker1 = new PoiPicker({ input: "pickerInput1" });
-          const picker2 = new PoiPicker({ input: "pickerInput2" });
-          picker1.on("poiPicked", (poiResult) => {
-            if (newMarker1) newMarker1.setMap(null);
-            const poi = poiResult.item;
-            newMarker1 = new AMap.Marker({
-              position: poi.location,
-              icon: "/poi-marker-1.png",
-              map: newMap,
-            });
-
-            newMap.setCenter(poi.location);
-          });
-          picker2.on("poiPicked", (poiResult) => {
-            if (newMarker2) newMarker2.setMap(null);
-            const poi = poiResult.item;
-            newMarker2 = new AMap.Marker({
-              position: poi.location,
-              icon: "/poi-marker-2.png",
-              map: newMap,
-            });
-
-            newMap.setCenter(poi.location);
-          });
-        });
-
-        onMapReady({
-          createMarker1: () => {
-            newMap.off("click", handleMarker2Click);
-            newMap.on("click", handleMarker1Click);
-          },
-          createMarker2: () => {
-            newMap.off("click", handleMarker1Click);
-            newMap.on("click", handleMarker2Click);
-          },
-          stopListening: () => {
-            newMap.off("click", handleMarker1Click);
-            newMap.off("click", handleMarker2Click);
-          },
-          getCity: () => {
-            let marker1Position = newMarker1.getPosition();
-            let marker2Position = newMarker2.getPosition();
-            console.log(marker1Position);
-            driving.search(
-              [marker1Position.lng, marker1Position.lat], // 起点
-              [marker2Position.lng, marker2Position.lat], // 终点
-              (status, result) => {
-                if (status === "complete") {
-                  const cities = new Set();
-                  result.routes[0].steps.forEach((step) => {
-                    step.cities?.forEach((city) => cities.add(city.name));
-                  });
-                  alert(`路线经过的城市: ${Array.from(cities).join(", ")}`);
-                }
-              }
-            );
-          },
-        });
-
         setMapInstance(newMap);
       })
       .catch(console.error);
 
-    return () => mapInstance?.destroy();
+    return () => {
+    };
   }, []);
 
   return (
@@ -126,12 +197,17 @@ const MapComponent = ({ onMapReady }) => {
         <input
           id="pickerInput1"
           placeholder="搜索地点..."
-          className="border-gray-400 border-1 rounded-md w-3/4"
+          className="border-gray-400 border-1 rounded-md w-3/4 text-black"
         />
         <input
           id="pickerInput2"
           placeholder="搜索地点..."
-          className="border-gray-400 border-1 rounded-md w-3/4"
+          className="border-gray-400 border-1 rounded-md w-3/4 text-black"
+        />
+        <input
+          id="pickerInput3"
+          placeholder="搜索地点..."
+          className="border-gray-400 border-1 rounded-md w-3/4 text-black"
         />
       </div>
     </div>
