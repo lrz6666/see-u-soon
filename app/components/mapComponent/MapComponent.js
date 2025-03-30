@@ -12,44 +12,91 @@ const MapComponent = ({ onMapReady }) => {
   const marker1Ref = useRef(null);
   const marker2Ref = useRef(null);
   const marker3Ref = useRef(null);
-  const polylineRef = useRef(null);
+  const polyline1Ref = useRef(null);
+  const polyline2Ref = useRef(null);
 
   const updatePolyline = () => {
     if (!mapInstance) return;
 
-    const positions = [];
-    if (marker1Ref.current) positions.push(marker1Ref.current.getPosition());
-    if (marker2Ref.current) positions.push(marker2Ref.current.getPosition());
-    if (marker3Ref.current) positions.push(marker3Ref.current.getPosition());
+    // polyline1 (marker1和marker2之间)
+    if (marker1Ref.current && marker2Ref.current) {
+      const positions = [
+        marker1Ref.current.getPosition(),
+        marker2Ref.current.getPosition()
+      ];
+      if (polyline1Ref.current) {
+        polyline1Ref.current.setPath(positions);
+      } else {
+        polyline1Ref.current = new AMap.Polyline({
+          path: positions,
+          strokeColor: "#3366FF",
+          strokeWeight: 5,
+          map: mapInstance,
+        });
+      }
+    } else if (polyline1Ref.current) {
+      polyline1Ref.current.setMap(null);
+      polyline1Ref.current = null;
+    }
 
-    if (polylineRef.current) {
-      console.log(2);
-      polylineRef.current.setPath(positions);
-    } else {
-      console.log(3);
-      polylineRef.current = new AMap.Polyline({
-        path: positions,
-        strokeColor: "#3366FF",
-        strokeWeight: 5,
-        map: mapInstance,
-      });
+    // polyline2 (marker2和marker3之间)
+    if (marker2Ref.current && marker3Ref.current) {
+      const positions = [
+        marker2Ref.current.getPosition(),
+        marker3Ref.current.getPosition()
+      ];
+      if (polyline2Ref.current) {
+        polyline2Ref.current.setPath(positions);
+      } else {
+        polyline2Ref.current = new AMap.Polyline({
+          path: positions,
+          strokeColor: "#3366FF", 
+          strokeWeight: 5,
+          map: mapInstance,
+        });
+      }
+    } else if (polyline2Ref.current) {
+      polyline2Ref.current.setMap(null);
+      polyline2Ref.current = null;
+    }
+
+    // 只有marker1和marker3时也生成polyline1
+    if (marker1Ref.current && marker3Ref.current && !marker2Ref.current) {
+      const positions = [
+        marker1Ref.current.getPosition(),
+        marker3Ref.current.getPosition()
+      ];
+      if (polyline1Ref.current) {
+        polyline1Ref.current.setPath(positions);
+      } else {
+        polyline1Ref.current = new AMap.Polyline({
+          path: positions,
+          strokeColor: "#3366FF",
+          strokeWeight: 5,
+          map: mapInstance,
+        });
+      }
     }
   };
+
   useEffect(() => {
     updatePolyline();
-    console.log(1);
   }, [marker1, marker2, marker3]);
-  useEffect(() => {
-    if (!mapInstance || !AMap || !AMapUI) return;
 
+  useEffect(() => {
+    if (!mapInstance) return;
+    console.log("AMap 是否加载:", !!window.AMap);
+    console.log("AMapUI 是否加载:", !!window.AMapUI);
     AMapUI.loadUI(["misc/PoiPicker"], (PoiPicker) => {
       const picker1 = new PoiPicker({ input: "pickerInput1" });
       const picker2 = new PoiPicker({ input: "pickerInput2" });
       const picker3 = new PoiPicker({ input: "pickerInput3" });
 
       picker1.on("poiPicked", (poiResult) => {
+        console.log(poiResult);
         if (marker1Ref.current) marker1Ref.current.setMap(null);
         const poi = poiResult.item;
+        console.log(poi);
         marker1Ref.current = new AMap.Marker({
           position: poi.location,
           icon: "/poi-marker-1.png",
@@ -57,7 +104,7 @@ const MapComponent = ({ onMapReady }) => {
           offset: new AMap.Pixel(-25, -60),
         });
         mapInstance.setCenter(poi.location);
-        setMarker1(marker1Ref.current)
+        setMarker1(marker1Ref.current);
       });
 
       picker2.on("poiPicked", (poiResult) => {
@@ -70,7 +117,7 @@ const MapComponent = ({ onMapReady }) => {
           offset: new AMap.Pixel(-25, -60),
         });
         mapInstance.setCenter(poi.location);
-        setMarker2(marker2Ref.current)
+        setMarker2(marker2Ref.current);
       });
 
       picker3.on("poiPicked", (poiResult) => {
@@ -83,7 +130,7 @@ const MapComponent = ({ onMapReady }) => {
           offset: new AMap.Pixel(-25, -60),
         });
         mapInstance.setCenter(poi.location);
-        setMarker3(marker3Ref.current)
+        setMarker3(marker3Ref.current);
       });
     });
 
@@ -145,7 +192,7 @@ const MapComponent = ({ onMapReady }) => {
         mapInstance.off("click", handleMarker3Click);
       },
       deleteMarker: () => {
-        const refsToClear = [marker1Ref, marker2Ref, marker3Ref, polylineRef];
+        const refsToClear = [marker1Ref, marker2Ref, marker3Ref, polyline1Ref, polyline2Ref];
         refsToClear.forEach((ref) => {
           if (ref.current) {
             ref.current.setMap(null);
@@ -153,7 +200,6 @@ const MapComponent = ({ onMapReady }) => {
           }
         });
       },
-      queryCity:()=>{}
     });
   }, [mapInstance]);
 
@@ -171,7 +217,12 @@ const MapComponent = ({ onMapReady }) => {
     AMapLoader.load({
       key: "f2c2bfef42f38f023e17cea4b858ed98",
       version: "2.0",
-      plugins: ["AMap.InfoWindow", "AMap.Marker", "AMap.Driving"],
+      plugins: [
+        "AMap.InfoWindow",
+        "AMap.Marker",
+        "AMap.Driving",
+        "AMap.DistrictSearch",
+      ],
       AMapUI: {
         version: "1.1",
         plugins: ["misc/PoiPicker"],
@@ -187,6 +238,10 @@ const MapComponent = ({ onMapReady }) => {
       .catch(console.error);
 
     return () => {
+      if (mapInstance) {
+        mapInstance.destroy();
+        setMapInstance(null);
+      }
     };
   }, []);
 
