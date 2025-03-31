@@ -5,8 +5,8 @@ import MapComponent from "../components/mapComponent";
 import { useState } from "react";
 export default function feature() {
   const [mapFunctions, setMapFunctions] = useState(null);
-  const handleMapReady = ({ createMarker1, createMarker2,createMarker3,deleteMarker, stopListening,queryCity }) => {
-    setMapFunctions({ createMarker1, createMarker2,createMarker3,deleteMarker, stopListening,queryCity});
+  const handleMapReady = ({ createMarker1, createMarker2,createMarker3,deleteMarker, stopListening,queryCities}) => {
+    setMapFunctions({ createMarker1, createMarker2,createMarker3,deleteMarker, stopListening,queryCities});
   };
   return (
     <div className="h-screen">
@@ -23,7 +23,7 @@ export default function feature() {
             <Button onClick={()=>{mapFunctions.createMarker3()}}>创建标记3</Button>
             <Button onClick={()=>{mapFunctions.stopListening()}}>停止创建</Button>
             <Button onClick={()=>{mapFunctions.deleteMarker()}}>清除标记</Button>
-            <Button onClick={()=>{mapFunctions.queryCity()}}>查询</Button>
+            <Button onClick={()=>{mapFunctions.queryCities()}}>查询</Button>
 
           </div>
         </div>

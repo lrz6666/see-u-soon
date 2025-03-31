@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import AMapLoader from "@amap/amap-jsapi-loader";
 import dynamic from "next/dynamic";
+import * as turf from '@turf/turf';
+import citiesData from '@/public/data/data/cities.json';
 
 const MapComponent = ({ onMapReady }) => {
   const mapRef = useRef(null);
@@ -17,12 +19,11 @@ const MapComponent = ({ onMapReady }) => {
 
   const updatePolyline = () => {
     if (!mapInstance) return;
-
     // polyline1 (marker1和marker2之间)
     if (marker1Ref.current && marker2Ref.current) {
       const positions = [
         marker1Ref.current.getPosition(),
-        marker2Ref.current.getPosition()
+        marker2Ref.current.getPosition(),
       ];
       if (polyline1Ref.current) {
         polyline1Ref.current.setPath(positions);
@@ -43,14 +44,14 @@ const MapComponent = ({ onMapReady }) => {
     if (marker2Ref.current && marker3Ref.current) {
       const positions = [
         marker2Ref.current.getPosition(),
-        marker3Ref.current.getPosition()
+        marker3Ref.current.getPosition(),
       ];
       if (polyline2Ref.current) {
         polyline2Ref.current.setPath(positions);
       } else {
         polyline2Ref.current = new AMap.Polyline({
           path: positions,
-          strokeColor: "#3366FF", 
+          strokeColor: "#3366FF",
           strokeWeight: 5,
           map: mapInstance,
         });
@@ -64,7 +65,7 @@ const MapComponent = ({ onMapReady }) => {
     if (marker1Ref.current && marker3Ref.current && !marker2Ref.current) {
       const positions = [
         marker1Ref.current.getPosition(),
-        marker3Ref.current.getPosition()
+        marker3Ref.current.getPosition(),
       ];
       if (polyline1Ref.current) {
         polyline1Ref.current.setPath(positions);
@@ -87,6 +88,7 @@ const MapComponent = ({ onMapReady }) => {
     if (!mapInstance) return;
     console.log("AMap 是否加载:", !!window.AMap);
     console.log("AMapUI 是否加载:", !!window.AMapUI);
+
     AMapUI.loadUI(["misc/PoiPicker"], (PoiPicker) => {
       const picker1 = new PoiPicker({ input: "pickerInput1" });
       const picker2 = new PoiPicker({ input: "pickerInput2" });
@@ -192,7 +194,13 @@ const MapComponent = ({ onMapReady }) => {
         mapInstance.off("click", handleMarker3Click);
       },
       deleteMarker: () => {
-        const refsToClear = [marker1Ref, marker2Ref, marker3Ref, polyline1Ref, polyline2Ref];
+        const refsToClear = [
+          marker1Ref,
+          marker2Ref,
+          marker3Ref,
+          polyline1Ref,
+          polyline2Ref,
+        ];
         refsToClear.forEach((ref) => {
           if (ref.current) {
             ref.current.setMap(null);
@@ -200,6 +208,34 @@ const MapComponent = ({ onMapReady }) => {
           }
         });
       },
+      queryCities: () => {
+        if (!polyline1Ref.current || !polyline2Ref.current) return [];
+        
+        // 获取两条折线的路径点
+        const line1Path = polyline1Ref.current.getPath();
+        const line2Path = polyline2Ref.current.getPath();
+        
+        // 转换为turf格式的线
+        const line1 = turf.lineString(line1Path.map(p => [p.lng, p.lat]));
+        const line2 = turf.lineString(line2Path.map(p => [p.lng, p.lat]));
+        
+        // 提取所有城市数据
+        const allCities = citiesData.data.flatMap(province => province.cities || []);
+        
+        // 筛选符合条件的城市
+        const nearbyCities = allCities.filter(city => {
+          const cityPoint = turf.point(city.center);
+          
+          // 计算城市到两条线的距离(单位转换为公里)
+          const distanceToLine1 = turf.pointToLineDistance(cityPoint, line1, {units: 'kilometers'});
+          const distanceToLine2 = turf.pointToLineDistance(cityPoint, line2, {units: 'kilometers'});
+          
+          // 返回距离任意一条线50公里内的城市
+          return distanceToLine1 <= 50 || distanceToLine2 <= 50;
+        });
+          console.log(nearbyCities)
+        return nearbyCities;
+      }
     });
   }, [mapInstance]);
 
