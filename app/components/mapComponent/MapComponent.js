@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import AMapLoader from "@amap/amap-jsapi-loader";
 import dynamic from "next/dynamic";
-import * as turf from '@turf/turf';
-import citiesData from '@/public/data/data/cities.json';
+import * as turf from "@turf/turf";
+import citiesData from "@/public/data/cities/cities.json";
 
 const MapComponent = ({ onMapReady }) => {
   const mapRef = useRef(null);
@@ -16,6 +16,20 @@ const MapComponent = ({ onMapReady }) => {
   const marker3Ref = useRef(null);
   const polyline1Ref = useRef(null);
   const polyline2Ref = useRef(null);
+  const [cityOptions, setCityOptions] = useState([]);
+  // 输入框状态管理
+  const [inputValues, setInputValues] = useState(["", "", ""]);
+  const [filteredCities, setFilteredCities] = useState([[], [], []]);
+  const [showDropdowns, setShowDropdowns] = useState([false, false, false]);
+  const [highlightedIndices, setHighlightedIndices] = useState([-1, -1, -1]);
+
+  // 提取所有城市名称
+  useEffect(() => {
+    const allCities = citiesData.data.flatMap((province) =>
+      province.cities ? province.cities.map((city) => city.name) : []
+    );
+    setCityOptions(allCities);
+  }, []);
 
   const updatePolyline = () => {
     if (!mapInstance) return;
@@ -84,93 +98,140 @@ const MapComponent = ({ onMapReady }) => {
     updatePolyline();
   }, [marker1, marker2, marker3]);
 
+  // 根据城市名称查找坐标并放置标记
+  const handleCitySelect = (cityName, markerRef, setMarker) => {
+    if (!cityName) return;
+
+    // 在所有城市中查找匹配的城市
+    const foundCity = citiesData.data
+      .flatMap((province) => province.cities || [])
+      .find((city) => city.name === cityName);
+
+    if (foundCity && mapInstance) {
+      if (markerRef.current) markerRef.current.setMap(null);
+      const position = new AMap.LngLat(
+        foundCity.center[0],
+        foundCity.center[1]
+      );
+      markerRef.current = new AMap.Marker({
+        position,
+        icon: `/poi-marker-${
+          markerRef === marker1Ref ? "1" : markerRef === marker2Ref ? "2" : "3"
+        }.png`,
+        offset: new AMap.Pixel(-25, -60),
+        map: mapInstance,
+      });
+      mapInstance.setCenter(position);
+      setMarker(markerRef.current);
+    }
+  };
+
+  // 处理输入变化
+  const handleInputChange = (index, value) => {
+    const newInputValues = [...inputValues];
+    newInputValues[index] = value;
+    setInputValues(newInputValues);
+
+    const newFilteredCities = [...filteredCities];
+    newFilteredCities[index] = cityOptions.filter((city) =>
+      city.includes(value)
+    );
+    setFilteredCities(newFilteredCities);
+
+    const newShowDropdowns = [...showDropdowns];
+    newShowDropdowns[index] = true;
+    setShowDropdowns(newShowDropdowns);
+  };
+
+  // 处理城市选择
+  const handleCityChoice = (index, city) => {
+    const newInputValues = [...inputValues];
+    newInputValues[index] = city;
+    setInputValues(newInputValues);
+
+    const newShowDropdowns = [...showDropdowns];
+    newShowDropdowns[index] = false;
+    setShowDropdowns(newShowDropdowns);
+
+    const markerRef =
+      index === 0 ? marker1Ref : index === 1 ? marker2Ref : marker3Ref;
+    const setMarker =
+      index === 0 ? setMarker1 : index === 1 ? setMarker2 : setMarker3;
+    handleCitySelect(city, markerRef, setMarker);
+  };
+
+  // 处理键盘导航
+  const handleKeyDown = (index, e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const newHighlightedIndices = [...highlightedIndices];
+      newHighlightedIndices[index] = Math.min(
+        newHighlightedIndices[index] + 1,
+        filteredCities[index].length - 1
+      );
+      setHighlightedIndices(newHighlightedIndices);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const newHighlightedIndices = [...highlightedIndices];
+      newHighlightedIndices[index] = Math.max(
+        newHighlightedIndices[index] - 1,
+        -1
+      );
+      setHighlightedIndices(newHighlightedIndices);
+    } else if (e.key === "Enter" && highlightedIndices[index] >= 0) {
+      e.preventDefault();
+      handleCityChoice(index, filteredCities[index][highlightedIndices[index]]);
+    }
+  };
+
+  // 处理失去焦点
+  const handleBlur = (index) => {
+    setTimeout(() => {
+      const newShowDropdowns = [...showDropdowns];
+      newShowDropdowns[index] = false;
+      setShowDropdowns(newShowDropdowns);
+    }, 200);
+  };
+
   useEffect(() => {
     if (!mapInstance) return;
-    console.log("AMap 是否加载:", !!window.AMap);
-    console.log("AMapUI 是否加载:", !!window.AMapUI);
 
-    AMapUI.loadUI(["misc/PoiPicker"], (PoiPicker) => {
-      const picker1 = new PoiPicker({ input: "pickerInput1" });
-      const picker2 = new PoiPicker({ input: "pickerInput2" });
-      const picker3 = new PoiPicker({ input: "pickerInput3" });
+    // 创建标记点击处理函数的工厂函数
+    const createMarkerClickHandler =
+      (markerRef, setMarker, markerNumber) => (ev) => {
+        const lnglat = ev.lnglat;
 
-      picker1.on("poiPicked", (poiResult) => {
-        console.log(poiResult);
-        if (marker1Ref.current) marker1Ref.current.setMap(null);
-        const poi = poiResult.item;
-        console.log(poi);
-        marker1Ref.current = new AMap.Marker({
-          position: poi.location,
-          icon: "/poi-marker-1.png",
-          map: mapInstance,
+        // 清除旧标记
+        if (markerRef.current) markerRef.current.setMap(null);
+
+        // 创建新标记
+        markerRef.current = new AMap.Marker({
+          position: [lnglat.getLng(), lnglat.getLat()],
+          icon: `/poi-marker-${markerNumber}.png`,
           offset: new AMap.Pixel(-25, -60),
-        });
-        mapInstance.setCenter(poi.location);
-        setMarker1(marker1Ref.current);
-      });
-
-      picker2.on("poiPicked", (poiResult) => {
-        if (marker2Ref.current) marker2Ref.current.setMap(null);
-        const poi = poiResult.item;
-        marker2Ref.current = new AMap.Marker({
-          position: poi.location,
-          icon: "/poi-marker-2.png",
           map: mapInstance,
-          offset: new AMap.Pixel(-25, -60),
         });
-        mapInstance.setCenter(poi.location);
-        setMarker2(marker2Ref.current);
-      });
 
-      picker3.on("poiPicked", (poiResult) => {
-        if (marker3Ref.current) marker3Ref.current.setMap(null);
-        const poi = poiResult.item;
-        marker3Ref.current = new AMap.Marker({
-          position: poi.location,
-          icon: "/poi-marker-3.png",
-          map: mapInstance,
-          offset: new AMap.Pixel(-25, -60),
-        });
-        mapInstance.setCenter(poi.location);
-        setMarker3(marker3Ref.current);
-      });
-    });
+        // 更新状态
+        setMarker(markerRef.current);
+      };
 
-    const handleMarker1Click = (ev) => {
-      const lnglat = ev.lnglat;
-      if (marker1Ref.current) marker1Ref.current.setMap(null);
-      marker1Ref.current = new AMap.Marker({
-        position: [lnglat.getLng(), lnglat.getLat()],
-        icon: "/poi-marker-1.png",
-        offset: new AMap.Pixel(-25, -60),
-        map: mapInstance,
-      });
-      setMarker1(marker1Ref.current);
-    };
-
-    const handleMarker2Click = (ev) => {
-      const lnglat = ev.lnglat;
-      if (marker2Ref.current) marker2Ref.current.setMap(null);
-      marker2Ref.current = new AMap.Marker({
-        position: [lnglat.getLng(), lnglat.getLat()],
-        icon: "/poi-marker-2.png",
-        offset: new AMap.Pixel(-25, -60),
-        map: mapInstance,
-      });
-      setMarker2(marker2Ref.current);
-    };
-
-    const handleMarker3Click = (ev) => {
-      const lnglat = ev.lnglat;
-      if (marker3Ref.current) marker3Ref.current.setMap(null);
-      marker3Ref.current = new AMap.Marker({
-        position: [lnglat.getLng(), lnglat.getLat()],
-        icon: "/poi-marker-3.png",
-        offset: new AMap.Pixel(-25, -60),
-        map: mapInstance,
-      });
-      setMarker3(marker3Ref.current);
-    };
+    // 使用工厂函数生成三个处理函数
+    const handleMarker1Click = createMarkerClickHandler(
+      marker1Ref,
+      setMarker1,
+      1
+    );
+    const handleMarker2Click = createMarkerClickHandler(
+      marker2Ref,
+      setMarker2,
+      2
+    );
+    const handleMarker3Click = createMarkerClickHandler(
+      marker3Ref,
+      setMarker3,
+      3
+    );
 
     onMapReady({
       createMarker1: () => {
@@ -209,31 +270,43 @@ const MapComponent = ({ onMapReady }) => {
         });
       },
       queryCities: () => {
-        if (!polyline1Ref.current || !polyline2Ref.current) return [];
+        // 获取两条折线的路径
+        const line1Path = polyline1Ref.current?.getPath() || [];
+        const line2Path = polyline2Ref.current?.getPath() || [];
+      
+        // 准备用于计算的线段数组
+        const lines = [];
         
-        // 获取两条折线的路径点
-        const line1Path = polyline1Ref.current.getPath();
-        const line2Path = polyline2Ref.current.getPath();
-        
-        // 转换为turf格式的线
-        const line1 = turf.lineString(line1Path.map(p => [p.lng, p.lat]));
-        const line2 = turf.lineString(line2Path.map(p => [p.lng, p.lat]));
-        
-        // 提取所有城市数据
-        const allCities = citiesData.data.flatMap(province => province.cities || []);
-        
-        // 筛选符合条件的城市
-        const nearbyCities = allCities.filter(city => {
+        // 如果第一条折线有有效路径点，则创建线段
+        if (line1Path.length >= 2) {
+          lines.push(turf.lineString(line1Path.map(p => [p.lng, p.lat])));
+        }
+      
+        // 如果第二条折线有有效路径点，则创建线段
+        if (line2Path.length >= 2) {
+          lines.push(turf.lineString(line2Path.map(p => [p.lng, p.lat])));
+        }
+      
+        // 如果没有有效折线，直接返回空数组
+        if (lines.length === 0) return [];
+      
+        const allCities = citiesData.data.flatMap(
+          (province) => province.cities || []
+        );
+      
+        const nearbyCities = allCities.filter((city) => {
           const cityPoint = turf.point(city.center);
           
-          // 计算城市到两条线的距离(单位转换为公里)
-          const distanceToLine1 = turf.pointToLineDistance(cityPoint, line1, {units: 'kilometers'});
-          const distanceToLine2 = turf.pointToLineDistance(cityPoint, line2, {units: 'kilometers'});
-          
-          // 返回距离任意一条线50公里内的城市
-          return distanceToLine1 <= 50 || distanceToLine2 <= 50;
+          // 检查城市是否靠近任何一条折线
+          return lines.some(line => {
+            const distance = turf.pointToLineDistance(cityPoint, line, {
+              units: "kilometers"
+            });
+            return distance <= 50;
+          });
         });
-          console.log(nearbyCities)
+      
+        console.log(nearbyCities);
         return nearbyCities;
       }
     });
@@ -261,7 +334,7 @@ const MapComponent = ({ onMapReady }) => {
       ],
       AMapUI: {
         version: "1.1",
-        plugins: ["misc/PoiPicker"],
+        plugins: [],
       },
     })
       .then((AMap) => {
@@ -284,22 +357,47 @@ const MapComponent = ({ onMapReady }) => {
   return (
     <div className="w-full h-full relative">
       <div ref={mapRef} className="w-full h-full" />
-      <div className="w-52 h-16 bg-white z-10 absolute top-0 right-0 mt-1 mr-1 rounded-xl flex flex-col items-center justify-center space-y-2 border-1 border-gray-400">
-        <input
-          id="pickerInput1"
-          placeholder="搜索地点..."
-          className="border-gray-400 border-1 rounded-md w-3/4 text-black"
-        />
-        <input
-          id="pickerInput2"
-          placeholder="搜索地点..."
-          className="border-gray-400 border-1 rounded-md w-3/4 text-black"
-        />
-        <input
-          id="pickerInput3"
-          placeholder="搜索地点..."
-          className="border-gray-400 border-1 rounded-md w-3/4 text-black"
-        />
+      <div className="w-52 h-1/3 bg-white z-10 absolute top-0 right-0 mt-1 mr-1 rounded-xl flex flex-col items-center justify-center space-y-2 border-1 border-gray-400">
+        {[0, 1, 2].map((index) => (
+          <div key={index} className="relative w-3/4">
+            <input
+              type="text"
+              value={inputValues[index]}
+              onChange={(e) => handleInputChange(index, e.target.value)}
+              onFocus={() => {
+                const newShowDropdowns = [...showDropdowns];
+                newShowDropdowns[index] = true;
+                setShowDropdowns(newShowDropdowns);
+              }}
+              onBlur={() => handleBlur(index)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
+              placeholder="输入城市名称..."
+              className="border-gray-400 border-1 rounded-md w-full text-black px-2 py-1"
+            />
+            {showDropdowns[index] && filteredCities[index].length > 0 && (
+              <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                {filteredCities[index].map((city, cityIndex) => (
+                  <li
+                    key={cityIndex}
+                    className={`px-2 py-1 text-black cursor-pointer  ${
+                      highlightedIndices[index] === cityIndex
+                        ? "bg-blue-100"
+                        : ""
+                    }`}
+                    onClick={() => handleCityChoice(index, city)}
+                    onMouseEnter={() => {
+                      const newHighlightedIndices = [...highlightedIndices];
+                      newHighlightedIndices[index] = cityIndex;
+                      setHighlightedIndices(newHighlightedIndices);
+                    }}
+                  >
+                    {city}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
