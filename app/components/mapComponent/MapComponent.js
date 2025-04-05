@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import AMapLoader from "@amap/amap-jsapi-loader";
 import dynamic from "next/dynamic";
 import * as turf from "@turf/turf";
 import citiesData from "@/public/data/cities/cities.json";
@@ -319,37 +318,40 @@ const MapComponent = ({ onMapReady }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const AMapScript = document.createElement("script");
-    AMapScript.src = "https://webapi.amap.com/loader.js";
-    AMapScript.async = true;
-    document.head.appendChild(AMapScript);
+    
+    import("@amap/amap-jsapi-loader").then(({ default: AMapLoader }) => {
+      const AMapScript = document.createElement("script");
+      AMapScript.src = "https://webapi.amap.com/loader.js";
+      AMapScript.async = true;
+      document.head.appendChild(AMapScript);
 
-    window._AMapSecurityConfig = {
-      securityJsCode: "2dda444782a3ca0e77af8378406439e8",
-    };
+      window._AMapSecurityConfig = {
+        securityJsCode: "2dda444782a3ca0e77af8378406439e8",
+      };
 
-    AMapLoader.load({
-      key: "f2c2bfef42f38f023e17cea4b858ed98",
-      version: "2.0",
-      plugins: [
-        "AMap.InfoWindow",
-        "AMap.Marker",
-        "AMap.Driving",
-        "AMap.DistrictSearch",
-      ],
-      AMapUI: {
-        version: "1.1",
-        plugins: [],
-      },
-    })
-      .then((AMap) => {
-        const newMap = new AMap.Map(mapRef.current, {
-          zoom: 13,
-          center: [116.397428, 39.90923],
-        });
-        setMapInstance(newMap);
+      AMapLoader.load({
+        key: "f2c2bfef42f38f023e17cea4b858ed98",
+        version: "2.0",
+        plugins: [
+          "AMap.InfoWindow",
+          "AMap.Marker",
+          "AMap.Driving",
+          "AMap.DistrictSearch",
+        ],
+        AMapUI: {
+          version: "1.1",
+          plugins: [],
+        },
       })
-      .catch(console.error);
+        .then((AMap) => {
+          const newMap = new AMap.Map(mapRef.current, {
+            zoom: 13,
+            center: [116.397428, 39.90923],
+          });
+          setMapInstance(newMap);
+        })
+        .catch(console.error);
+    });
 
     return () => {
       if (mapInstance) {
