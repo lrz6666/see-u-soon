@@ -28,6 +28,7 @@ const MapComponent = ({ onMapReady }) => {
     const allCities = citiesData.data.flatMap((province) =>
       province.cities ? province.cities.map((city) => city.name) : []
     );
+    console.log(allCities)
     setCityOptions(allCities);
   }, []);
 
@@ -104,7 +105,11 @@ const MapComponent = ({ onMapReady }) => {
 
     // 在所有城市中查找匹配的城市
     const foundCity = citiesData.data
-      .flatMap((province) => province.cities || [])
+      .flatMap((province) => {
+        // 处理普通省份的城市列表
+        const provinceCities = province.cities || [];
+        return provinceCities;
+      })
       .find((city) => city.name === cityName);
 
     if (foundCity && mapInstance) {
@@ -217,42 +222,42 @@ const MapComponent = ({ onMapReady }) => {
       };
 
     // 使用工厂函数生成三个处理函数
-    const handleMarker1Click = createMarkerClickHandler(
-      marker1Ref,
-      setMarker1,
-      1
-    );
+    // const handleMarker1Click = createMarkerClickHandler(
+    //   marker1Ref,
+    //   setMarker1,
+    //   1
+    // );
     const handleMarker2Click = createMarkerClickHandler(
       marker2Ref,
       setMarker2,
       2
     );
-    const handleMarker3Click = createMarkerClickHandler(
-      marker3Ref,
-      setMarker3,
-      3
-    );
+    // const handleMarker3Click = createMarkerClickHandler(
+    //   marker3Ref,
+    //   setMarker3,
+    //   3
+    // );
 
     onMapReady({
-      createMarker1: () => {
-        mapInstance.off("click", handleMarker2Click);
-        mapInstance.off("click", handleMarker3Click);
-        mapInstance.on("click", handleMarker1Click);
-      },
+      // createMarker1: () => {
+      //   mapInstance.off("click", handleMarker2Click);
+      //   mapInstance.off("click", handleMarker3Click);
+      //   mapInstance.on("click", handleMarker1Click);
+      // },
       createMarker2: () => {
-        mapInstance.off("click", handleMarker1Click);
-        mapInstance.off("click", handleMarker3Click);
+        // mapInstance.off("click", handleMarker1Click);
+        // mapInstance.off("click", handleMarker3Click);
         mapInstance.on("click", handleMarker2Click);
       },
-      createMarker3: () => {
-        mapInstance.off("click", handleMarker1Click);
-        mapInstance.off("click", handleMarker2Click);
-        mapInstance.on("click", handleMarker3Click);
-      },
+      // createMarker3: () => {
+      //   mapInstance.off("click", handleMarker1Click);
+      //   mapInstance.off("click", handleMarker2Click);
+      //   mapInstance.on("click", handleMarker3Click);
+      // },
       stopListening: () => {
-        mapInstance.off("click", handleMarker1Click);
+        // mapInstance.off("click", handleMarker1Click);
         mapInstance.off("click", handleMarker2Click);
-        mapInstance.off("click", handleMarker3Click);
+        // mapInstance.off("click", handleMarker3Click);
       },
       deleteMarker: () => {
         const refsToClear = [
@@ -268,47 +273,47 @@ const MapComponent = ({ onMapReady }) => {
             ref.current = null;
           }
         });
+        setInputValues(Array(inputValues.length).fill(""));
       },
       queryCities: () => {
         // 获取两条折线的路径
         const line1Path = polyline1Ref.current?.getPath() || [];
         const line2Path = polyline2Ref.current?.getPath() || [];
-      
+
         // 准备用于计算的线段数组
         const lines = [];
-        
+
         // 如果第一条折线有有效路径点，则创建线段
         if (line1Path.length >= 2) {
-          lines.push(turf.lineString(line1Path.map(p => [p.lng, p.lat])));
+          lines.push(turf.lineString(line1Path.map((p) => [p.lng, p.lat])));
         }
-      
+
         // 如果第二条折线有有效路径点，则创建线段
         if (line2Path.length >= 2) {
-          lines.push(turf.lineString(line2Path.map(p => [p.lng, p.lat])));
+          lines.push(turf.lineString(line2Path.map((p) => [p.lng, p.lat])));
         }
-      
+
         // 如果没有有效折线，直接返回空数组
         if (lines.length === 0) return [];
-      
+
         const allCities = citiesData.data.flatMap(
           (province) => province.cities || []
         );
-      
+
         const nearbyCities = allCities.filter((city) => {
           const cityPoint = turf.point(city.center);
-          
+
           // 检查城市是否靠近任何一条折线
-          return lines.some(line => {
+          return lines.some((line) => {
             const distance = turf.pointToLineDistance(cityPoint, line, {
-              units: "kilometers"
+              units: "kilometers",
             });
             return distance <= 50;
           });
         });
-      
-        console.log(nearbyCities);
+
         return nearbyCities;
-      }
+      },
     });
   }, [mapInstance]);
 
@@ -355,11 +360,20 @@ const MapComponent = ({ onMapReady }) => {
   }, []);
 
   return (
-    <div className="w-full h-full relative">
-      <div ref={mapRef} className="w-full h-full" />
-      <div className="w-52 h-1/3 bg-white z-10 absolute top-0 right-0 mt-1 mr-1 rounded-xl flex flex-col items-center justify-center space-y-2 border-1 border-gray-400">
+    <div className="w-full h-full relative  ">
+      <div
+        ref={mapRef}
+        className="w-full h-2/3 lg:h-full border-amber-50 border-2 rounded-xl overflow-hidden "
+      />
+      <div className="w-full h-1/3 lg:w-1/4  bg-white lg:z-10 lg:absolute lg:top-0 lg:right-0 mt-1 mr-1 rounded-xl flex flex-col items-center justify-center space-y-2 border-1 border-gray-400">
         {[0, 1, 2].map((index) => (
-          <div key={index} className="relative w-3/4">
+          <div key={index} className="relative w-3/4 md:w-4/5 flex">
+            <img
+              className="w-8 h-8 object-contain"
+              src={`/poi-marker-${
+                index === 0 ? "1" : index === 1 ? "2" : "3"
+              }.png`}
+            />
             <input
               type="text"
               value={inputValues[index]}
@@ -372,10 +386,10 @@ const MapComponent = ({ onMapReady }) => {
               onBlur={() => handleBlur(index)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               placeholder="输入城市名称..."
-              className="border-gray-400 border-1 rounded-md w-full text-black px-2 py-1"
+              className="border-gray-400 border-1 rounded-md w-full  text-black px-2 py-1"
             />
             {showDropdowns[index] && filteredCities[index].length > 0 && (
-              <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+              <ul className="absolute z-10 w-[calc(100%-32px)] right-0  mt-8 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                 {filteredCities[index].map((city, cityIndex) => (
                   <li
                     key={cityIndex}

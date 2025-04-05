@@ -1,9 +1,5 @@
 import Image from "next/image";
-
+import { redirect } from 'next/navigation';
 export default function () {
-  return (
-    <div >
-      guide
-    </div>
-  );
+  redirect('/home');
 }

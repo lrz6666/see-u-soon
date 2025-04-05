@@ -1,3 +1,7 @@
+//！！！！！！！为了让特殊地区（香港，澳门）也能正常被按做城市，我已更改了cities.json。如果再运行此脚本，将会导致修改完善后的cities.json文件被覆盖，导致在地图上特殊地区出现问题。
+//！！！！！！！为了让特殊地区（香港，澳门）也能正常被按做城市，我已更改了cities.json。如果再运行此脚本，将会导致修改完善后的cities.json文件被覆盖，导致在地图上特殊地区出现问题。
+//！！！！！！！为了让特殊地区（香港，澳门）也能正常被按做城市，我已更改了cities.json。如果再运行此脚本，将会导致修改完善后的cities.json文件被覆盖，导致在地图上特殊地区出现问题。
+//仍然要更改的话，要将底部的main（）注释取消。
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -115,4 +119,4 @@ function decodePolyline(polyline) {
 }
 
 // 执行主函数
-main();
+// main();
