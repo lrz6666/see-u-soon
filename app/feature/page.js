@@ -157,17 +157,17 @@ export default function feature() {
             </Button>
           </div>
         </div>
-        <div className=" w-screen items-center absolute left-0 bottom-0 z-100 flex">
+        <div className=" w-screen items-center flex">
+        </div>
         <Link
             href="https://github.com/lrz6666/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-gray-700 hover:text-black transition-colors"
+            className="flex items-center gap-2 fixed left-0 bottom-0 z-100 text-gray-700 hover:text-black transition-colors"
           >
             <FaGithub size={24} />
             <span>lrz6666</span>
           </Link>
-        </div>
       </div>
     </div>
   );
