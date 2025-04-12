@@ -2,7 +2,7 @@
 import Button from "../components/Button";
 import Background from "../components/Background";
 import MapComponent from "../components/mapComponent";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import Link from "next/link";
 export default function feature() {

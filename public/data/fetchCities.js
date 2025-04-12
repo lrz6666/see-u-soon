@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
 
 // 配置参数
-const AMAP_KEY = 'b74ac657cb05623bb16167b6d14362e3'; // 请妥善保管您的key
+const AMAP_KEY = process.env.NEXT_PUBLIC_API_WEBSERVE_KEY; // 高德地图的key
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.join(__dirname, 'cities');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'cities-full.json');

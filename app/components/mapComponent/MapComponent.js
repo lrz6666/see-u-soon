@@ -326,11 +326,11 @@ const MapComponent = ({ onMapReady }) => {
       document.head.appendChild(AMapScript);
 
       window._AMapSecurityConfig = {
-        securityJsCode: "2dda444782a3ca0e77af8378406439e8",
+        securityJsCode: process.env.NEXT_PUBLIC_API_WEB_KEY_PASSWORD,
       };
 
       AMapLoader.load({
-        key: "f2c2bfef42f38f023e17cea4b858ed98",
+        key: process.env.NEXT_PUBLIC_API_WEB_KEY,
         version: "2.0",
         plugins: [
           "AMap.InfoWindow",
